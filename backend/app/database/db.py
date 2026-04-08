@@ -12,3 +12,4 @@ alerts_collection = db["alerts"]
 watchlist_collection = db["watchlist"]
 portfolio_collection = db["portfolio"]
 users_collection = db["users"]
+transactions_collection = db["transactions"]  # NEW

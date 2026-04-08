@@ -3,6 +3,10 @@ import requests
 import yfinance as yf
 from fastapi.middleware.cors import CORSMiddleware
 app = FastAPI()
+from app.routes.transactions import router as transactions_router
+app.include_router(transactions_router, prefix="/transactions", tags=["Transactions"])
+from app.routes.screener import router as screener_router
+app.include_router(screener_router, prefix="/screener")
 from app.routes.payments import router as payments_router
 
 app.include_router(payments_router, prefix="/payments")

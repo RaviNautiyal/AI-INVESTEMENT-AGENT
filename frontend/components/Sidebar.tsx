@@ -1,5 +1,5 @@
 "use client";
-
+import {FiList} from "react-icons/fi" 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -17,7 +17,8 @@ import {
   RiScales3Line,
   RiLineChartLine,
   RiGlobalLine,
-  RiVipCrownLine
+  RiVipCrownLine,
+  
 } from "react-icons/ri";
 
 
@@ -34,6 +35,7 @@ const navLinks = [
   { href: "/screener", label: "Screener", icon: RiStockLine },
   { href: "/news", label: "News", icon: RiNewspaperLine },
   { href: "/ai", label: "AI Advisor", icon: RiRobot2Line },
+  { href: "/transactions", label: "Transactions", icon: FiList  },
   { href: "/pricing", label: "Upgrade Pro", icon: RiVipCrownLine }
 ];
 export default function Sidebar() {

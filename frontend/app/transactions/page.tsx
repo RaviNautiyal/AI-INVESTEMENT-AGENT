@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import {
-  FiTrendingUp, FiTrendingDown, FiPlus, FiTrash2,
+  FiPlus, FiTrash2,
   FiDollarSign, FiActivity
 } from "react-icons/fi";
 
@@ -46,7 +46,10 @@ export default function TransactionsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<"positions" | "history">("positions");
 
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  // ✅ Single token declaration — no useState, reads synchronously
+  const token = typeof window !== "undefined"
+    ? (localStorage.getItem("token") || localStorage.getItem("access_token"))
+    : null;
 
   const fetchData = async () => {
     setLoading(true);
@@ -54,12 +57,33 @@ export default function TransactionsPage() {
       const res = await fetch(`${API}/transactions/`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      const data = await res.json();
-      setTransactions(data.transactions || []);
-      setPositions(data.open_positions || []);
-      setSummary(data.summary || null);
+
+     const text = await res.text();
+console.log("Raw API response:", text);
+
+if (!text || text === "null") {
+  console.error("Empty response from server");
+  return;
+}
+
+let data;
+try {
+  data = JSON.parse(text);
+} catch (e) {
+  console.error("JSON parse failed:", text);
+  return;
+}
+
+if (!res.ok || !data) {
+  console.error("API error:", data);
+  return;
+}
+
+setTransactions(data.transactions || []);
+setPositions(data.open_positions || []);
+setSummary(data.summary || null);
     } catch (e) {
-      console.error(e);
+      console.error("Fetch error:", e);
     } finally {
       setLoading(false);
     }
@@ -103,6 +127,7 @@ export default function TransactionsPage() {
 
   const pnlColor = (val: number) =>
     val >= 0 ? "text-emerald-400" : "text-red-400";
+
   const pnlBg = (val: number) =>
     val >= 0 ? "bg-emerald-400/10 border-emerald-400/20" : "bg-red-400/10 border-red-400/20";
 
@@ -128,11 +153,11 @@ export default function TransactionsPage() {
         {summary && (
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
             {[
-              { label: "Total Invested", value: summary.total_invested, icon: <FiDollarSign /> },
-              { label: "Current Value", value: summary.current_value, icon: <FiActivity /> },
-              { label: "Realized P&L", value: summary.realized_pnl, colored: true },
+              { label: "Total Invested", value: summary.total_invested },
+              { label: "Current Value",  value: summary.current_value },
+              { label: "Realized P&L",   value: summary.realized_pnl,   colored: true },
               { label: "Unrealized P&L", value: summary.unrealized_pnl, colored: true },
-              { label: "Total P&L", value: summary.total_pnl, colored: true, bold: true },
+              { label: "Total P&L",      value: summary.total_pnl,      colored: true },
             ].map((card, i) => (
               <div key={i} className={`rounded-xl border p-4 ${card.colored ? pnlBg(card.value) : "bg-white/5 border-white/10"}`}>
                 <p className="text-gray-400 text-xs mb-1">{card.label}</p>
@@ -162,6 +187,7 @@ export default function TransactionsPage() {
         {loading ? (
           <div className="text-center text-gray-500 py-20">Loading...</div>
         ) : activeTab === "positions" ? (
+
           /* Open Positions Table */
           <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
             <table className="w-full text-sm">
@@ -193,7 +219,9 @@ export default function TransactionsPage() {
               </tbody>
             </table>
           </div>
+
         ) : (
+
           /* Trade History Table */
           <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
             <table className="w-full text-sm">
@@ -213,7 +241,9 @@ export default function TransactionsPage() {
                     <td className="px-4 py-3 font-semibold text-indigo-400">{t.symbol}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                        t.type === "buy" ? "bg-emerald-400/20 text-emerald-400" : "bg-red-400/20 text-red-400"
+                        t.type === "buy"
+                          ? "bg-emerald-400/20 text-emerald-400"
+                          : "bg-red-400/20 text-red-400"
                       }`}>
                         {t.type.toUpperCase()}
                       </span>

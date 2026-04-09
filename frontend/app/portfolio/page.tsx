@@ -1,155 +1,161 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
+import { FiPlus, FiTrash2, FiExternalLink } from "react-icons/fi";
+
 export default function Portfolio() {
-    const [stocks, setStocks] = useState<any[]>([]);
-    const [ticker, setTicker] = useState("");
-    const [amount, setAmount] = useState("");
-    const [loading, setLoading] = useState(false);
-    const [fetching, setFetching] = useState(false);
-    const router = useRouter();
+  const [stocks, setStocks] = useState<any[]>([]);
+  const [fetching, setFetching] = useState(false);
+  const router = useRouter();
 
-const getToken = () => localStorage.getItem("token") || "";
-useEffect(() => {
-  const token = localStorage.getItem("token");
-  if (!token) {
-    router.push("/login");
-    return;
-  }
+  const getToken = () => localStorage.getItem("token") || "";
 
-  fetchPortfolio();
-
-  const interval = setInterval(() => {
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) { router.push("/login"); return; }
     fetchPortfolio();
-  }, 30000);
+    const interval = setInterval(fetchPortfolio, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
-  return () => clearInterval(interval);
-}, []);
-const fetchPortfolio = async () => {
-  setFetching(true);
-  try {
-    const res = await fetch("http://localhost:8000/portfolio/all", {
+  const fetchPortfolio = async () => {
+    setFetching(true);
+    try {
+      const res = await fetch("http://localhost:8000/portfolio/all", {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      const data = await res.json();
+      setStocks(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Error fetching portfolio:", err);
+    }
+    setFetching(false);
+  };
+
+  const removeStock = async (ticker: string) => {
+    await fetch(`http://localhost:8000/portfolio/remove/${ticker}`, {
+      method: "DELETE",
       headers: { Authorization: `Bearer ${getToken()}` },
     });
-    const data = await res.json();
-    setStocks(data);
-  } catch (err) {
-    console.error("Error fetching portfolio:", err);
-  }
-  setFetching(false);
-};
+    fetchPortfolio();
+  };
 
-const addStock = async () => {
-  if (!ticker || !amount) return;
-  setLoading(true);
-
-  await fetch("http://localhost:8000/portfolio/add", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${getToken()}`,
-    },
-    body: JSON.stringify({ ticker: ticker.toUpperCase(), amount: parseFloat(amount) }),
-  });
-
-  setTicker("");
-  setAmount("");
-  setLoading(false);
-  fetchPortfolio();
-};
-
-const removeStock = async (ticker: string) => {
-  await fetch(`http://localhost:8000/portfolio/remove/${ticker}`, {
-    method: "DELETE",
-    headers: { Authorization: `Bearer ${getToken()}` },
-  });
-  fetchPortfolio();
-};
-
-
-  const totalInvested = stocks.reduce((sum, s) => sum + s.invested, 0);
-  const totalValue = stocks.reduce((sum, s) => sum + s.current_value, 0);
+  const totalInvested = stocks.reduce((sum, s) => sum + (s.invested || 0), 0);
+  const totalValue = stocks.reduce((sum, s) => sum + (s.current_value || 0), 0);
   const totalProfitLoss = totalValue - totalInvested;
 
   return (
-    
-    <div className="min-h-screen bg-gray-100 p-6">
-      <div className="max-w-4xl mx-auto bg-white shadow-lg rounded-xl p-6">
+    <div className="min-h-screen bg-[#0a0a0f] text-white p-6">
+      <div className="max-w-4xl mx-auto">
 
-        <h1 className="text-3xl font-bold text-gray-800">💼 My Portfolio</h1>
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-2xl font-bold">My Portfolio</h1>
+            <p className="text-gray-400 text-sm mt-1">
+              Holdings computed from your transaction history
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={() => router.push("/transactions")}
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            >
+              <FiPlus /> Add Transaction
+            </button>
+            <button
+              onClick={() => router.push("/transactions")}
+              className="flex items-center gap-2 border border-white/10 hover:border-white/30 px-4 py-2 rounded-lg text-sm text-gray-400 hover:text-white transition-colors"
+            >
+              <FiExternalLink size={14} /> View All Trades
+            </button>
+          </div>
+        </div>
 
-        {/* Add Stock Form */}
-        <div className="flex gap-3 mt-6">
-          <input
-            className="border p-3 rounded-lg w-40 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            placeholder="Ticker (AAPL)"
-            value={ticker}
-            onChange={(e) => setTicker(e.target.value)}
-          />
-          <input
-            className="border p-3 rounded-lg w-40 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            placeholder="Amount ($)"
-            type="number"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-          />
-          <button
-            onClick={addStock}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-lg transition"
-          >
-            {loading ? "Adding..." : "Add Stock"}
-          </button>
+        {/* Info Banner */}
+        <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-4 mb-6 text-sm text-indigo-300">
+          💡 Your portfolio is automatically computed from your transactions.
+          To add or remove holdings, use <span
+            className="underline cursor-pointer"
+            onClick={() => router.push("/transactions")}
+          >Transaction History</span>.
         </div>
 
         {/* Summary Cards */}
         {stocks.length > 0 && (
-          <div className="grid grid-cols-3 gap-4 mt-6">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-gray-500">Total Invested</p>
-              <p className="text-xl font-bold text-blue-600">${totalInvested.toLocaleString()}</p>
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+              <p className="text-xs text-gray-400 mb-1">Total Invested</p>
+              <p className="text-xl font-bold text-white">
+                ${totalInvested.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
             </div>
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <p className="text-sm text-gray-500">Current Value</p>
-              <p className="text-xl font-bold text-green-600">${totalValue.toLocaleString()}</p>
+            <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+              <p className="text-xs text-gray-400 mb-1">Current Value</p>
+              <p className="text-xl font-bold text-white">
+                ${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
             </div>
-            <div className={`border rounded-lg p-4 ${totalProfitLoss >= 0 ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}`}>
-              <p className="text-sm text-gray-500">Total P&L</p>
-              <p className={`text-xl font-bold ${totalProfitLoss >= 0 ? "text-green-600" : "text-red-600"}`}>
-                {totalProfitLoss >= 0 ? "+" : ""}${totalProfitLoss.toLocaleString()}
+            <div className={`rounded-xl border p-4 ${totalProfitLoss >= 0 ? "bg-emerald-400/10 border-emerald-400/20" : "bg-red-400/10 border-red-400/20"}`}>
+              <p className="text-xs text-gray-400 mb-1">Total P&L</p>
+              <p className={`text-xl font-bold ${totalProfitLoss >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                {totalProfitLoss >= 0 ? "+" : ""}${totalProfitLoss.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
             </div>
           </div>
         )}
 
         {/* Stock List */}
-        <div className="mt-6 space-y-3">
+        <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
           {fetching ? (
-            <p className="text-center text-gray-400">Loading live prices...</p>
+            <p className="text-center text-gray-500 py-16">Fetching live prices...</p>
           ) : stocks.length === 0 ? (
-            <p className="text-gray-400 text-center mt-10">No stocks added yet.</p>
+            <div className="text-center py-16">
+              <p className="text-gray-500 mb-4">No holdings yet.</p>
+              <button
+                onClick={() => router.push("/transactions")}
+                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-lg text-sm font-medium transition-colors mx-auto"
+              >
+                <FiPlus /> Add your first transaction
+              </button>
+            </div>
           ) : (
-          stocks.map((stock, index) => (
-  <div key={index} className="flex justify-between items-center border rounded-lg p-4 hover:shadow-sm transition">
-    <div>
-      <p className="text-lg font-semibold text-gray-800">{stock.ticker}</p>
-      <p className="text-sm text-gray-500">Invested: ₹{stock.invested.toLocaleString()}</p>
-      <p className="text-sm text-gray-500">Price: ${stock.current_price_usd} (₹{stock.current_price_inr})</p>
-      <p className="text-sm text-gray-500">Shares: {stock.shares}</p>
-    </div>
-    <div className="text-right">
-      <p className="text-sm text-gray-500">Current Value: ₹{stock.current_value.toLocaleString()}</p>
-      <p className={`font-semibold ${stock.profit_loss >= 0 ? "text-green-600" : "text-red-600"}`}>
-        {stock.profit_loss >= 0 ? "+" : ""}₹{stock.profit_loss.toLocaleString()} ({stock.percent_change}%)
-      </p>
-    </div>
-    <button
-      onClick={() => removeStock(stock.ticker)}
-      className="text-red-400 hover:text-red-600 text-sm ml-4"
-    >
-      Remove
-    </button>
-  </div>
-))
+            <table className="w-full text-sm">
+              <thead className="border-b border-white/10 text-gray-400">
+                <tr>
+                  {["Stock", "Shares", "Avg Cost", "Live Price (USD)", "Value", "P&L", ""].map(h => (
+                    <th key={h} className="text-left px-4 py-3 font-medium">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {stocks.map((stock, index) => (
+                  <tr key={index} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                    <td className="px-4 py-3 font-semibold text-indigo-400">{stock.ticker}</td>
+                    <td className="px-4 py-3">{stock.shares}</td>
+                    <td className="px-4 py-3">${stock.avg_cost_usd ?? "—"}</td>
+                    <td className="px-4 py-3">
+                      <span>${stock.current_price_usd}</span>
+                      <span className="text-gray-500 text-xs ml-1">(₹{stock.current_price_inr})</span>
+                    </td>
+                    <td className="px-4 py-3">${stock.current_value?.toLocaleString()}</td>
+                    <td className={`px-4 py-3 font-medium ${stock.profit_loss >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                      {stock.profit_loss >= 0 ? "+" : ""}${stock.profit_loss?.toFixed(2)}
+                      <span className="text-xs ml-1">({stock.percent_change}%)</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => removeStock(stock.ticker)}
+                        className="text-gray-500 hover:text-red-400 transition-colors"
+                        title="Remove all transactions for this stock"
+                      >
+                        <FiTrash2 size={14} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
         </div>
 
